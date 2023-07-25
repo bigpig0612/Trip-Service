@@ -38,16 +38,7 @@ public class TripProcessor {
         List<Tab> tabList = tabService.getAllTabs();
 
         //grouping by PAN_CompanyID_BusID
-        Map<String, List<Tab>> groupedTabList = tabList.stream()
-                .collect(Collectors.groupingBy(tab ->
-                                tab.getPAN() + "_" + tab.getCompanyId() + "_" + tab.getBusID(),
-                        Collectors.collectingAndThen(
-                                Collectors.toList(),
-                                list -> list.stream()
-                                        .sorted(Comparator.comparing(Tab::getDateTimeUTC).reversed())
-                                        .collect(Collectors.toList())
-                        )
-                ));
+        Map<String, List<Tab>> groupedTabList = groupAndSortTabsByKeys(tabList);
 
         List<Trip> trips = new ArrayList<>();
 
@@ -62,45 +53,8 @@ public class TripProcessor {
                 Tab currentTab = personTabList.get(i);
                 Tab previousTab = i+1>=personTabList.size()? null:personTabList.get(i+1);
 
-                log.info("Current Tab: {}", currentTab);
-                log.info("Previous Tab: {}", previousTab);
+                Trip trip = createTripFromTabPair(currentTab, previousTab);
 
-                Trip trip;
-                Tab.TabType currentTabType = currentTab.getTapType();
-
-                if(currentTabType==Tab.TabType.OFF) {
-                    if(previousTab==null || previousTab.getTapType()==Tab.TabType.OFF) {
-                        //Scenario 1: If the currentTab status is OFF, and the previous status is also OFF or object is null, the currentTab alone constitutes a status of UN_KNOWN.
-                        trip = Trip.builder().finished(currentTab.getDateTimeUTC())
-                                .toStopId(currentTab.getStopId()).companyId(currentTab.getCompanyId())
-                                .busID(currentTab.getBusID()).PAN(currentTab.getPAN()).status(Trip.TripStatus.UNKNOWN).build();
-                    } else {
-                        //Scenario 2: If the currentTab status is OFF, and the previousTab status is ON, the currentTab and previousTab together constitute a status of COMPLETE or CANCEL, depending on whether they have the same stop or not.
-                        long durationSecs = Duration.between(previousTab.getDateTimeUTC(), currentTab.getDateTimeUTC()).getSeconds();
-                        boolean isSameStop = currentTab.getStopId().equals(previousTab.getStopId());
-
-                        trip = Trip.builder().started(previousTab.getDateTimeUTC()).finished(currentTab.getDateTimeUTC())
-                                .durationSecs(durationSecs )
-                                .fromStopId(previousTab.getStopId())
-                                .toStopId(currentTab.getStopId())
-                                .companyId(currentTab.getCompanyId())
-                                .busID(currentTab.getBusID())
-                                .status(isSameStop ? Trip.TripStatus.CANCELLED : Trip.TripStatus.COMPLETED)
-                                .PAN(currentTab.getPAN()).build();
-                    }
-                } else {
-                    //Scenario 3: If the currentTab status is ON, regardless of the previousTab status, the currentTab alone constitutes a status of INCOMPLETE for the Trip.
-                    trip = Trip.builder().started(currentTab.getDateTimeUTC())
-                            .fromStopId(currentTab.getStopId())
-                            .companyId(currentTab.getCompanyId())
-                            .busID(currentTab.getBusID())
-                            .PAN(currentTab.getPAN())
-                            .status(Trip.TripStatus.INCOMPLETE).build();
-                }
-
-                trip.setChargeAmount(calculateChargeAmount(trip.getFromStopId(), trip.getToStopId(), trip.getStatus()));
-
-                log.info("Trip created with information: {}", trip);
 
                 if(trip.getStatus()== Trip.TripStatus.COMPLETED || trip.getStatus()== Trip.TripStatus.CANCELLED) i++;
 
@@ -113,30 +67,81 @@ public class TripProcessor {
         return trips;
     }
 
+    /**
+     * Save the list of trips to the repository.
+     *
+     * @param tripList The list of Trip objects to be saved.
+     */
     public void saveTripList(List<Trip> tripList) {
         tripService.saveTripList(tripList);
     }
 
-    private double calculateChargeAmount(String tapOnStop, String tapOffStop, Trip.TripStatus tripStatus) {
-        Map<String, Double> fareTable = new HashMap<>();
-        fareTable.put("Stop1_Stop2", 3.25);
-        fareTable.put("Stop2_Stop1", 3.25);
-        fareTable.put("Stop2_Stop3", 5.50);
-        fareTable.put("Stop3_Stop2", 5.50);
-        fareTable.put("Stop1_Stop3", 7.30);
-        fareTable.put("Stop3_Stop1", 7.30);
+    /**
+     * Create a Trip object from a pair of Tab objects.
+     *
+     * @param currentTab  The current Tab object.
+     * @param previousTab The previous Tab object.
+     * @return The generated Trip object.
+     */
+    private Trip createTripFromTabPair(Tab currentTab, Tab previousTab) {
+        log.info("Creating trip with current Tab: {}, previous Tab: {}", currentTab, previousTab);
 
-        switch (tripStatus) {
-            case COMPLETED -> {
-                return fareTable.get(tapOnStop + "_" + tapOffStop);
+        Trip trip;
+        Tab.TabType currentTabType = currentTab.getTapType();
+
+        if(currentTabType==Tab.TabType.OFF) {
+            if(previousTab==null || previousTab.getTapType()==Tab.TabType.OFF) {
+                //Scenario 1: If the currentTab status is OFF, and the previous status is also OFF or object is null, the currentTab alone constitutes a status of UN_KNOWN.
+                trip = Trip.builder().finished(currentTab.getDateTimeUTC())
+                        .toStopId(currentTab.getStopId()).companyId(currentTab.getCompanyId())
+                        .busID(currentTab.getBusID()).PAN(currentTab.getPAN()).status(Trip.TripStatus.UNKNOWN).build();
+            } else {
+                //Scenario 2: If the currentTab status is OFF, and the previousTab status is ON, the currentTab and previousTab together constitute a status of COMPLETE or CANCEL, depending on whether they have the same stop or not.
+                long durationSecs = Duration.between(previousTab.getDateTimeUTC(), currentTab.getDateTimeUTC()).getSeconds();
+                boolean isSameStop = currentTab.getStopId().equals(previousTab.getStopId());
+
+                trip = Trip.builder().started(previousTab.getDateTimeUTC()).finished(currentTab.getDateTimeUTC())
+                        .durationSecs(durationSecs )
+                        .fromStopId(previousTab.getStopId())
+                        .toStopId(currentTab.getStopId())
+                        .companyId(currentTab.getCompanyId())
+                        .busID(currentTab.getBusID())
+                        .status(isSameStop ? Trip.TripStatus.CANCELLED : Trip.TripStatus.COMPLETED)
+                        .PAN(currentTab.getPAN()).build();
             }
-            case INCOMPLETE -> {
-                return Math.max(fareTable.getOrDefault(tapOnStop + "_Stop1",0.0),
-                        Math.max(fareTable.getOrDefault(tapOnStop + "_Stop2", 0.0),
-                                fareTable.getOrDefault(tapOnStop + "_Stop3", 0.0)));
-            }
+        } else {
+            //Scenario 3: If the currentTab status is ON, regardless of the previousTab status, the currentTab alone constitutes a status of INCOMPLETE for the Trip.
+            trip = Trip.builder().started(currentTab.getDateTimeUTC())
+                    .fromStopId(currentTab.getStopId())
+                    .companyId(currentTab.getCompanyId())
+                    .busID(currentTab.getBusID())
+                    .PAN(currentTab.getPAN())
+                    .status(Trip.TripStatus.INCOMPLETE).build();
         }
-        return 0;
+
+        trip.setChargeAmount(tripService.calculateChargeAmount(trip.getFromStopId(), trip.getToStopId(), trip.getStatus()));
+
+        log.info("Trip created with information: {}", trip);
+        return trip;
+    }
+
+    /**
+     * Group and sort the list of Tab objects based on PAN_CompanyID_BusID keys. The value will be sorted by time
+     *
+     * @param tabList The list of Tab objects to be grouped and sorted.
+     * @return A map with keys as PAN_CompanyID_BusID and values as corresponding lists of Tab objects.
+     */
+    private Map<String, List<Tab>> groupAndSortTabsByKeys(List<Tab> tabList) {
+        return tabList.stream()
+                .collect(Collectors.groupingBy(tab ->
+                                tab.getPAN() + "_" + tab.getCompanyId() + "_" + tab.getBusID(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> list.stream()
+                                        .sorted(Comparator.comparing(Tab::getDateTimeUTC).reversed())
+                                        .collect(Collectors.toList())
+                        )
+                ));
     }
 
 }
