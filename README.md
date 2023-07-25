@@ -21,6 +21,7 @@ Coding exercise for Littlepay interview.
 + If any of PAN, CompanyID, or BusID is different, it will be considered as two separate trips.
 + Adds an ON_KNOW status to mark Tab OFFs that couldn't be matched with any Tab ON.
 + Only support 3 stops, which are named Stop1, Stop2 and Stop3
++ More trip charge amount calculation rules will be required in the future
 
 ## Trip creation logic design
 
@@ -49,6 +50,12 @@ com.littpepay.tripservice
 ├── service
 │   ├──TabService.java
 │   ├──TripService.java
+├── strategy
+│   ├──CompletedFareCalculator.java
+│   ├──DefaultFareCalculator.java
+│   ├──FareCalculator.java
+│   ├──FareCalculatorFactory.java
+│   ├──IncompleteFareCalculator.java
 ├── util
 │   ├──CsvHelper.java
 │   ├──LocalDateTimeConverter.java
