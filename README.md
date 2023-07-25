@@ -56,7 +56,7 @@ com.littpepay.tripservice
 └── TripServiceApplication.java
 ```
 
-## Quick Start
+## Application Run
 
 **On Mac or Linux**:
 

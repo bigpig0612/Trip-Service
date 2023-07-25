@@ -6,3 +6,4 @@ application:
     trips:
       header: Started,Finished,DurationSecs,FromStopId,ToStopId,ChargeAmount,CompanyId,BusID,PAN,Status
       filePath: trips.csv
+      fareTable: '{"Stop1_Stop2":"3.25","Stop2_Stop1":"3.25","Stop2_Stop3":"5.50","Stop3_Stop2":"5.50","Stop3_Stop1":"7.30","Stop1_Stop3":"7.30"}'
