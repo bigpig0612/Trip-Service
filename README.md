@@ -2,7 +2,17 @@
 
 ## Description
 
+Coding exercise for Littlepay interview.
+
 ## Technology and Library
+
+- Java 17
+- Spring Boot
+- Maven
+- OpenCSV
+- lombok
+- JUnit
+- Mockito
 
 ## Assumption
 
@@ -10,6 +20,7 @@
 + Each trip requires a matching Tab ON and Tab OFF with the same PAN, CompanyID, and BusID.
 + If any of PAN, CompanyID, or BusID is different, it will be considered as two separate trips.
 + Adds an ON_KNOW status to mark Tab OFFs that couldn't be matched with any Tab ON.
++ Only support 3 stops, which are named Stop1, Stop2 and Stop3
 
 ## Trip creation logic design
 
@@ -25,7 +36,36 @@
 
 
 ## Directory Structure
+```
+com.littpepay.tripservice
+├── model
+│   ├──Tab.java
+│   ├──Trip.java
+├── processor
+│   ├──TripProcessor.java
+├── repository
+│   ├──TabRepository.java
+│   ├──TripRepository.java
+├── service
+│   ├──TabService.java
+│   ├──TripService.java
+├── util
+│   ├──CsvHelper.java
+│   ├──LocalDateTimeConverter.java
+│   ├──TrimFilter.java
+└── TripServiceApplication.java
+```
 
 ## Quick Start
 
-## TODO Features
+**On Mac or Linux**:
+
+```sh
+./mvnw spring-boot:run
+```
+
+**On Windows**:
+
+```sh
+mvnw.cmd spring-boot:run
+```
