@@ -76,3 +76,9 @@ com.littpepay.tripservice
 ```sh
 mvnw.cmd spring-boot:run
 ```
+
+## TODO
+1. Tab and Trip data should be migrated to the database. 
+2. CRUD REST endpoints for Tab and Trip need to be exposed to facilitate integration between systems.
+3. Implement system alerts, including both system-level robustness alerts and business-level alerts (e.g., alerting business personnel when there is a high occurrence of INCOMPLETE trips for a specific person or company).
+4. To handle scenarios with a large volume of data, employ a distributed approach to generate Trips from Tab records. Distribute the grouped Tab records based on PAN_CompanyID_BusID to multiple instances, allowing parallel processing across multiple machines to improve performance.
