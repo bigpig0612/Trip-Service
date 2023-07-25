@@ -2,6 +2,7 @@ package com.littlepay.tripservice.service;
 
 import com.littlepay.tripservice.model.Trip;
 import com.littlepay.tripservice.repository.TripRepository;
+import com.littlepay.tripservice.strategy.FareCalculatorFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,9 @@ import java.util.Map;
 public class TripService {
 
     private final TripRepository tripRepo;
+
+    private final FareCalculatorFactory fareCalculatorFactory;
+
     @Value("#{${application.config.trips.fareTable:{}}}")
     private Map<String, Double> fareTable;
 
@@ -47,16 +51,6 @@ public class TripService {
      * @return The calculated charge amount.
      */
     public double calculateChargeAmount(String tapOnStop, String tapOffStop, Trip.TripStatus tripStatus) {
-        switch (tripStatus) {
-            case COMPLETED -> {
-                return fareTable.get(tapOnStop + "_" + tapOffStop);
-            }
-            case INCOMPLETE -> {
-                return Math.max(fareTable.getOrDefault(tapOnStop + "_Stop1",0.0),
-                        Math.max(fareTable.getOrDefault(tapOnStop + "_Stop2", 0.0),
-                                fareTable.getOrDefault(tapOnStop + "_Stop3", 0.0)));
-            }
-        }
-        return 0;
+        return fareCalculatorFactory.getFareCalculator(tripStatus).calculateFare(tapOnStop, tapOffStop);
     }
 }
