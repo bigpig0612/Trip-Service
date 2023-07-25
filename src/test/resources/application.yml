@@ -1,0 +1,8 @@
+application:
+  config:
+    taps:
+      header: ID, DateTimeUTC, TapType, StopId, CompanyId, BusID, PAN
+      filePath: taps.csv
+    trips:
+      header: Started,Finished,DurationSecs,FromStopId,ToStopId,ChargeAmount,CompanyId,BusID,PAN,Status
+      filePath: trips.csv
